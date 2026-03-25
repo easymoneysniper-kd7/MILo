@@ -14,18 +14,20 @@ include_directories(${CONDA_PREFIX}/include)
 # TODO: fix this
 find_package(Torch REQUIRED)
 find_package(CGAL REQUIRED)
-# find_package(pybind11 REQUIRED)
+find_package(pybind11 CONFIG QUIET)
 
 include(FetchContent)
-FetchContent_Declare(
-    pybind11
-    GIT_REPOSITORY https://github.com/pybind/pybind11
-    GIT_TAG        v2.9.2
-)
-FetchContent_GetProperties(pybind11)
-if(NOT pybind11_POPULATED)
-    FetchContent_Populate(pybind11)
-    add_subdirectory(${pybind11_SOURCE_DIR} ${pybind11_BINARY_DIR})
+if(NOT pybind11_FOUND)
+    FetchContent_Declare(
+        pybind11
+        GIT_REPOSITORY https://github.com/pybind/pybind11
+        GIT_TAG        v2.9.2
+    )
+    FetchContent_GetProperties(pybind11)
+    if(NOT pybind11_POPULATED)
+        FetchContent_Populate(pybind11)
+        add_subdirectory(${pybind11_SOURCE_DIR} ${pybind11_BINARY_DIR})
+    endif()
 endif()
 
 
@@ -59,6 +61,9 @@ pybind11_add_module(tetranerf_cpp_extension
     src/triangulation.cpp
     src/py_binding.cpp)
 
+# Match the libstdc++ ABI expected by the installed PyTorch build.
+separate_arguments(TORCH_CXX_FLAGS_LIST NATIVE_COMMAND "${TORCH_CXX_FLAGS}")
+target_compile_options(tetranerf_cpp_extension PRIVATE ${TORCH_CXX_FLAGS_LIST})
 target_link_libraries(tetranerf_cpp_extension PRIVATE ${CUDA_LIBRARIES} ${TORCH_LIBRARIES})
 target_link_libraries(tetranerf_cpp_extension PRIVATE CGAL::CGAL)
 target_compile_features(tetranerf_cpp_extension PRIVATE cxx_std_17)

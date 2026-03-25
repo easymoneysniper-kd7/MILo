@@ -16,15 +16,11 @@
 #include "simple_knn.h"
 #include <cub/cub.cuh>
 #include <cub/device/device_radix_sort.cuh>
+#include <cfloat>
 #include <vector>
 #include <cuda_runtime_api.h>
 #include <thrust/device_vector.h>
 #include <thrust/sequence.h>
-#define __CUDACC__
-#include <cooperative_groups.h>
-#include <cooperative_groups/reduce.h>
-
-namespace cg = cooperative_groups;
 
 struct CustomMin
 {
@@ -62,7 +58,7 @@ __host__ __device__ uint32_t coord2Morton(float3 coord, float3 minn, float3 maxx
 
 __global__ void coord2Morton(int P, const float3* points, float3 minn, float3 maxx, uint32_t* codes)
 {
-	auto idx = cg::this_grid().thread_rank();
+	auto idx = blockIdx.x * blockDim.x + threadIdx.x;
 	if (idx >= P)
 		return;
 
@@ -77,7 +73,7 @@ struct MinMax
 
 __global__ void boxMinMax(uint32_t P, float3* points, uint32_t* indices, MinMax* boxes)
 {
-	auto idx = cg::this_grid().thread_rank();
+	auto idx = blockIdx.x * blockDim.x + threadIdx.x;
 
 	MinMax me;
 	if (idx < P)
@@ -146,7 +142,7 @@ __device__ void updateKBest(const float3& ref, const float3& point, float* knn)
 
 __global__ void boxMeanDist(uint32_t P, float3* points, uint32_t* indices, MinMax* boxes, float* dists)
 {
-	int idx = cg::this_grid().thread_rank();
+	int idx = blockIdx.x * blockDim.x + threadIdx.x;
 	if (idx >= P)
 		return;
 
@@ -185,7 +181,7 @@ __global__ void boxMeanDist(uint32_t P, float3* points, uint32_t* indices, MinMa
 void SimpleKNN::knn(int P, float3* points, float* meanDists)
 {
 	float3* result;
-	cudaMalloc(&result, sizeof(float3));
+	cudaMalloc(reinterpret_cast<void**>(&result), sizeof(float3));
 	size_t temp_storage_bytes;
 
 	float3 init = { 0, 0, 0 }, minn, maxx;

@@ -1,3 +1,4 @@
+import os
 from typing import Callable, Dict, Any, Tuple
 from functools import partial
 import gc
@@ -61,7 +62,15 @@ def initialize_mesh_regularization(
     print(f"         > Mesh depth loss type: {config['mesh_depth_loss_type']}")
     print(f"         > Occupancy mode: {config['occupancy_mode']}")
         
-    mesh_rasterizer = MeshRasterizer(cameras=scene.getTrainCameras().copy())
+    use_opengl = os.environ.get("MILO_USE_OPENGL", "0") == "1"
+    if use_opengl:
+        print("[INFO] Mesh rasterizer backend: OpenGL/EGL")
+    else:
+        print("[INFO] Mesh rasterizer backend: CUDA")
+    mesh_rasterizer = MeshRasterizer(
+        cameras=scene.getTrainCameras().copy(),
+        use_opengl=use_opengl,
+    )
     if config["use_scalable_renderer"]:
         print("[INFO] Using scalable mesh renderer.")
         mesh_renderer = ScalableMeshRenderer(mesh_rasterizer)

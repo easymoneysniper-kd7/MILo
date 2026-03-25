@@ -72,7 +72,9 @@ def training(
     if args.dense_gaussians:
         print("[INFO] Using dense Gaussians.")
     if checkpoint:
-        (model_params, first_iter) = torch.load(checkpoint)
+        # PyTorch 2.6 defaults torch.load() to weights_only=True, which breaks
+        # loading our trusted training checkpoints that store extra Python state.
+        (model_params, first_iter) = torch.load(checkpoint, weights_only=False)
         gaussians.restore(model_params, opt)
         if args.mesh_regularization:
             if first_iter > mesh_config["start_iter"]:

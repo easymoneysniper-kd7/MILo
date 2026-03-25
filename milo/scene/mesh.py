@@ -1,3 +1,4 @@
+import os
 from typing import List, Union, Tuple, Optional
 import torch
 import nvdiffrast.torch as dr
@@ -169,7 +170,7 @@ class MeshRasterizer(torch.nn.Module):
         self, 
         cameras:Union[List[Camera], Camera]=None,
         raster_settings:RasterizationSettings=None,
-        use_opengl=True,
+        use_opengl:Optional[bool]=None,
     ):
         super().__init__()
         
@@ -190,6 +191,9 @@ class MeshRasterizer(torch.nn.Module):
             )
             self.cameras = cameras
         
+        if use_opengl is None:
+            use_opengl = os.environ.get("MILO_USE_OPENGL", "0") == "1"
+
         if use_opengl:
             self.gl_context = dr.RasterizeGLContext()
         else:

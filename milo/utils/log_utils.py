@@ -131,6 +131,7 @@ def training_report(iteration, l1_loss, testing_iterations, scene, renderFunc, r
                 psnr_test = 0.0
                 ssims = []
                 lpipss = []
+                lpips_error = None
                 for idx, viewpoint in enumerate(config['cameras']):
                     image = torch.clamp(renderFunc(viewpoint, scene.gaussians, *renderArgs)["render"], 0.0, 1.0)
 
@@ -139,19 +140,27 @@ def training_report(iteration, l1_loss, testing_iterations, scene, renderFunc, r
                     psnr_test += psnr(image, gt_image).mean().double()
 
                     ssims.append(ssim(image, gt_image))
-                    lpipss.append(lpips(image, gt_image, net_type='vgg'))                    
+                    if lpips_error is None:
+                        try:
+                            lpipss.append(lpips(image, gt_image, net_type='vgg'))
+                        except Exception as exc:
+                            lpips_error = exc
 
 
                 psnr_test /= len(config['cameras'])
                 l1_test /= len(config['cameras']) 
 
                 ssims_test=torch.tensor(ssims).mean()
-                lpipss_test=torch.tensor(lpipss).mean()
+                lpipss_test = torch.tensor(lpipss).mean() if lpipss else None
 
                 print("\n[ITER {}] Evaluating {}: ".format(iteration, config['name']))
                 print("  SSIM : {:>12.7f}".format(ssims_test.mean(), ".5"))
                 print("  PSNR : {:>12.7f}".format(psnr_test.mean(), ".5"))
-                print("  LPIPS : {:>12.7f}".format(lpipss_test.mean(), ".5"))
+                if lpipss_test is not None:
+                    print("  LPIPS : {:>12.7f}".format(lpipss_test.mean(), ".5"))
+                else:
+                    print("  LPIPS : skipped")
+                    print(f"  LPIPS warning : {type(lpips_error).__name__}: {lpips_error}")
                 print("")
 
         torch.cuda.empty_cache()
@@ -306,11 +315,12 @@ def log_training_progress(
                 )
             run.log(wandb_log_images_dict, step=iteration)
 
-    # ---Report---
-    training_report(iteration, l1_loss, testing_iterations, scene, render_imp, (pipe, background))
     if (iteration in saving_iterations):
         print("\n[ITER {}] Saving Gaussians".format(iteration))
         scene.save(iteration)
+
+    # ---Report---
+    training_report(iteration, l1_loss, testing_iterations, scene, render_imp, (pipe, background))
 
     return (
         postfix_dict,

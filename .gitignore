@@ -1,5 +1,6 @@
 *.pyc
 .vscode
+data/
 output*/
 build
 __pycache__
@@ -13,6 +14,7 @@ utils/__pycache__
 debug*
 dtu_eval/Offical_DTU_Dataset
 *.sh
+!docker/*.sh
 submodules/diff-gaussian-rasterization-org
 snapshot_fw.dump
 snapshot_bw.dump
